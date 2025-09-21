@@ -1,0 +1,42 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# Base de datos local
+/database/database.sqlite
+*.sqlite
+
+# Archivos de configuración específicos
+/config/database.php.bak
+/config/app.php.bak
+
+# Logs y archivos temporales
+/storage/logs/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de despliegue
+.ftpconfig
+.deployignore
