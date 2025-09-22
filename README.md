@@ -1,19 +1,3 @@
-# 🎯 EMM - Sistema de Gestión Laravel
-
-**Estado del Despliegue:** ![Deployment Status](https://github.com/AllenC2/emm-laravel/actions/workflows/deploy-artifact.yml/badge.svg)
-
-## 🚀 Despliegue Automático
-
-Este proyecto usa **GitHub Actions** para crear paquetes de despliegue optimizados automáticamente.
-
-### 📦 Obtener la última versión:
-1. Ve a [Releases](https://github.com/AllenC2/emm-laravel/releases)
-2. Descarga el ZIP más reciente
-3. Sube a tu servidor
-4. Ejecuta `bash install.sh`
-
----
-
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
