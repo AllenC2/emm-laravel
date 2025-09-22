@@ -1,12 +1,15 @@
 # 🚨 Solución Error 404 - Laravel en cPanel
 
 ## Problema Identificado
+
 El error 404 indica que el servidor no encuentra el punto de entrada de Laravel. Esto ocurre cuando el **document root** no está configurado correctamente.
 
 ## ✅ Solución Paso a Paso
 
 ### 1. **Verificar Estructura en cPanel**
+
 Tu estructura debe verse así:
+
 ```
 /public_html/
 ├── tu-proyecto-laravel/          ← Código de Laravel
@@ -25,38 +28,45 @@ Tu estructura debe verse así:
 ### 2. **Configurar Document Root en cPanel**
 
 #### Opción A: Subdominios (Recomendado)
+
 1. Ve a **cPanel → Subdominios**
 2. Crea subdominio: `app.imallen.dev`
 3. **Document Root:** `/public_html/tu-proyecto-laravel/public`
 
 #### Opción B: Dominio Principal
+
 1. Ve a **cPanel → Dominios → Zona de DNS**
 2. O usa **File Manager** para:
-   - Mover contenido de `public/` a `/public_html/`
-   - Mover resto del proyecto a `/public_html/laravel/`
-   - Editar `index.php` para cambiar las rutas
+    - Mover contenido de `public/` a `/public_html/`
+    - Mover resto del proyecto a `/public_html/laravel/`
+    - Editar `index.php` para cambiar las rutas
 
 ### 3. **Configuración con Dominio Principal** (Si eliges Opción B)
 
 Edita `/public_html/index.php` y cambia:
+
 ```php
 require __DIR__.'/../vendor/autoload.php';
 $app = require_once __DIR__.'/../bootstrap/app.php';
 ```
 
 Por:
+
 ```php
 require __DIR__.'/laravel/vendor/autoload.php';
 $app = require_once __DIR__.'/laravel/bootstrap/app.php';
 ```
 
 ### 4. **Subir Archivo de Diagnóstico**
+
 1. Sube `diagnostico.php` a tu document root actual
 2. Visita: `https://imallen.dev/diagnostico.php`
 3. Revisa los resultados del diagnóstico
 
 ### 5. **Verificar .env**
+
 En el directorio de Laravel (NO en public), asegúrate de tener `.env`:
+
 ```env
 APP_NAME="EMM"
 APP_ENV=production
@@ -73,7 +83,9 @@ DB_PASSWORD=tu_password
 ```
 
 ### 6. **Ejecutar Comandos Post-Despliegue**
+
 En **cPanel → Terminal** o **File Manager → Terminal**:
+
 ```bash
 cd /public_html/tu-proyecto-laravel
 php artisan key:generate
@@ -99,14 +111,14 @@ php artisan route:clear
 
 ## 📋 Checklist de Verificación
 
-- [ ] Document root apunta a `/public`
-- [ ] Archivo `index.php` existe en document root
-- [ ] Archivo `.htaccess` existe en document root
-- [ ] Directorio `vendor` existe (en nivel superior)
-- [ ] Archivo `.env` configurado correctamente
-- [ ] Permisos correctos en `storage` y `bootstrap/cache`
-- [ ] PHP 8.2+ activado
-- [ ] Extensiones PHP requeridas instaladas
+-   [ ] Document root apunta a `/public`
+-   [ ] Archivo `index.php` existe en document root
+-   [ ] Archivo `.htaccess` existe en document root
+-   [ ] Directorio `vendor` existe (en nivel superior)
+-   [ ] Archivo `.env` configurado correctamente
+-   [ ] Permisos correctos en `storage` y `bootstrap/cache`
+-   [ ] PHP 8.2+ activado
+-   [ ] Extensiones PHP requeridas instaladas
 
 ## 🆘 Si Sigue sin Funcionar
 
@@ -117,7 +129,7 @@ php artisan route:clear
 
 ## 📞 Información Adicional
 
-- **Dominio:** imallen.dev
-- **Panel:** cPanel
-- **Framework:** Laravel 12
-- **PHP requerido:** 8.2+
+-   **Dominio:** imallen.dev
+-   **Panel:** cPanel
+-   **Framework:** Laravel 12
+-   **PHP requerido:** 8.2+

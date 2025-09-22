@@ -21,6 +21,17 @@ fi
 echo "Instalando dependencias de Composer..."
 composer install --no-dev --optimize-autoloader
 
+# Compilar assets si Node.js está disponible (opcional)
+if command -v npm &> /dev/null; then
+    echo "Instalando dependencias de Node.js..."
+    npm install --production
+    
+    echo "Compilando assets..."
+    npm run build
+else
+    echo "⚠️ Node.js no disponible. Assets deben compilarse en CI/CD."
+fi
+
 # Limpiar y crear cache de configuración
 echo "Configurando cache de Laravel..."
 php artisan config:clear
@@ -46,6 +57,13 @@ fi
 echo "Configurando permisos..."
 chmod -R 755 storage
 chmod -R 755 bootstrap/cache
+
+# Verificar que los assets compilados existen
+if [ -d "public/build" ]; then
+    echo "✅ Assets compilados encontrados en public/build"
+else
+    echo "⚠️ Assets compilados no encontrados. Verifica que npm run build se ejecutó correctamente."
+fi
 
 echo "Post-despliegue completado exitosamente!"
 echo "No olvides actualizar las variables de entorno en .env según tu configuración de producción."
