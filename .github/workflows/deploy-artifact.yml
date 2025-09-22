@@ -1,0 +1,134 @@
+name: Build Deployment Package
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Permite ejecutar manualmente
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, iconv, json, mbstring, zip
+        tools: composer:v2
+        
+    - name: Install Node Dependencies
+      run: npm ci
+      
+    - name: Build Assets
+      run: npm run build
+      
+    - name: Install PHP Dependencies
+      run: composer install --no-dev --optimize-autoloader
+      
+    - name: Create production .env
+      run: |
+        cp .env.production.example .env
+        php artisan key:generate --ansi
+        
+    - name: Cache Laravel configurations
+      run: |
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+        
+    - name: Create deployment package
+      run: |
+        # Crear directorio de distribución
+        mkdir -p dist
+        
+        # Copiar archivos necesarios
+        rsync -av --exclude-from=.gitignore \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='tests' \
+          --exclude='.phpunit.result.cache' \
+          --exclude='package*.json' \
+          --exclude='vite.config.js' \
+          --exclude='phpunit.xml' \
+          --exclude='README.md' \
+          --exclude='dist' \
+          . dist/
+          
+        # Crear archivo info de despliegue
+        echo "Deployment created: $(date)" > dist/deployment-info.txt
+        echo "Git commit: $(git rev-parse HEAD)" >> dist/deployment-info.txt
+        echo "Git branch: $(git rev-parse --abbrev-ref HEAD)" >> dist/deployment-info.txt
+        
+        # Crear script de instalación
+        cat > dist/install.sh << 'EOF'
+        #!/bin/bash
+        echo "🚀 Instalando Laravel EMM..."
+        
+        # Configurar permisos
+        chmod -R 755 storage bootstrap/cache
+        
+        # Ejecutar migraciones
+        php artisan migrate --force
+        
+        # Crear enlace storage
+        if [ ! -L public/storage ]; then
+          php artisan storage:link
+        fi
+        
+        echo "✅ Instalación completada!"
+        echo "📝 No olvides configurar el archivo .env con tus datos de producción"
+        EOF
+        
+        chmod +x dist/install.sh
+        
+        # Crear archivo ZIP
+        cd dist
+        zip -r ../emm-laravel-deployment.zip .
+        cd ..
+        
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v4
+      with:
+        name: emm-laravel-deployment
+        path: emm-laravel-deployment.zip
+        retention-days: 30
+        
+    - name: Create Release
+      if: github.event_name == 'push'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: deploy-${{ github.sha }}
+        release_name: Deployment ${{ github.sha }}
+        body: |
+          🚀 **Deployment Package Ready**
+          
+          📦 **Included:**
+          - Compiled assets (CSS/JS)
+          - Optimized PHP dependencies
+          - Laravel configurations cached
+          - Ready-to-use deployment
+          
+          📥 **Installation:**
+          1. Download `emm-laravel-deployment.zip`
+          2. Extract to your server
+          3. Configure `.env` with your database settings
+          4. Run `bash install.sh`
+          
+          📋 **Git Info:**
+          - Commit: ${{ github.sha }}
+          - Branch: ${{ github.ref_name }}
+          - Date: ${{ github.event.head_commit.timestamp }}
+        draft: false
+        prerelease: false

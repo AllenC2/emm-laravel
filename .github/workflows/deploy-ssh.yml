@@ -1,0 +1,78 @@
+name: Deploy via SSH
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, iconv, json, mbstring, zip
+        tools: composer:v2
+        
+    - name: Install Node Dependencies
+      run: npm ci
+      
+    - name: Build Assets
+      run: npm run build
+      
+    - name: Install PHP Dependencies
+      run: composer install --no-dev --optimize-autoloader
+      
+    - name: Deploy to Server via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          # Navegar al directorio del proyecto
+          cd ${{ secrets.PROJECT_PATH }}
+          
+          # Hacer backup del .env actual
+          cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+          
+          # Actualizar código desde GitHub
+          git fetch origin
+          git reset --hard origin/main
+          
+          # Instalar dependencias PHP
+          composer install --no-dev --optimize-autoloader
+          
+          # Instalar dependencias Node (si Node.js está disponible)
+          if command -v npm &> /dev/null; then
+            npm ci
+            npm run build
+          fi
+          
+          # Configurar Laravel
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan migrate --force
+          
+          # Configurar permisos
+          chmod -R 755 storage bootstrap/cache
+          
+          # Crear enlace storage si no existe
+          if [ ! -L public/storage ]; then
+            php artisan storage:link
+          fi
+          
+          echo "✅ Despliegue completado exitosamente!"
