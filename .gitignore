@@ -18,6 +18,17 @@
 /storage/*.key
 /storage/pail
 /vendor
+
+# ===========================================
+# ASSETS COMPILADOS - INCLUIDOS PARA cPanel
+# ===========================================
+# Normalmente /public/build se excluye, pero para 
+# servidores sin npm necesitamos incluir los assets compilados
+# /public/build
+
+# Excluir solo archivos de desarrollo de Vite
+/public/build/.vite
+/public/build/hot
 Homestead.json
 Homestead.yaml
 Thumbs.db

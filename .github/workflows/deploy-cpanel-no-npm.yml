@@ -1,0 +1,200 @@
+name: Deploy to cPanel without NPM
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📦 Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: 📥 Install Dependencies
+      run: npm ci
+      
+    - name: 🏗️ Build Assets
+      run: npm run build
+      
+    - name: 🐘 Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql, zip
+        tools: composer:v2
+        
+    - name: 📦 Install Composer Dependencies
+      run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+      
+    - name: 🗂️ Prepare Production Files
+      run: |
+        # Crear directorio para archivos de producción
+        mkdir -p production-files
+        
+        # Copiar archivos necesarios (excluyendo desarrollo)
+        rsync -av --progress \
+          --exclude='.git*' \
+          --exclude='node_modules' \
+          --exclude='tests' \
+          --exclude='.env*' \
+          --exclude='*.md' \
+          --exclude='package*.json' \
+          --exclude='vite.config.js' \
+          --exclude='phpunit.xml' \
+          --exclude='tailwind.config.js' \
+          --exclude='postcss.config.js' \
+          --exclude='resources/js' \
+          --exclude='resources/sass' \
+          --exclude='resources/css' \
+          --exclude='storage/logs' \
+          --exclude='.phpunit.cache' \
+          --exclude='database/database.sqlite' \
+          ./ production-files/
+          
+        # Crear archivos necesarios para producción
+        echo "<?php return [];" > production-files/bootstrap/cache/packages.php
+        echo "<?php return [];" > production-files/bootstrap/cache/services.php
+        
+        # Crear directorios necesarios
+        mkdir -p production-files/storage/{app/{public,private},framework/{cache,sessions,testing,views},logs}
+        mkdir -p production-files/bootstrap/cache
+        
+        # Configurar permisos (representativo)
+        echo "Archivos preparados para cPanel sin npm"
+        
+    - name: 📊 Show Production Structure
+      run: |
+        echo "📁 Estructura de archivos para producción:"
+        cd production-files
+        find . -maxdepth 3 -type d | head -20
+        echo ""
+        echo "📦 Tamaño total:"
+        du -sh .
+        echo ""
+        echo "🎨 Assets compilados:"
+        ls -la public/build/assets/ || echo "No se encontraron assets compilados"
+        
+    - name: 🗜️ Create Deployment Archive
+      run: |
+        cd production-files
+        
+        # Crear archivo .env.production de ejemplo
+        cat > .env.production.example << 'EOF'
+        APP_NAME="EMM - Sistema de Matrimonios"
+        APP_ENV=production
+        APP_KEY=
+        APP_DEBUG=false
+        APP_TIMEZONE=UTC
+        APP_URL=https://imallen.dev
+        
+        APP_LOCALE=es
+        APP_FALLBACK_LOCALE=en
+        APP_FAKER_LOCALE=es_ES
+        
+        LOG_CHANNEL=stack
+        LOG_DEPRECATIONS_CHANNEL=null
+        LOG_LEVEL=error
+        
+        DB_CONNECTION=mysql
+        DB_HOST=localhost
+        DB_PORT=3306
+        DB_DATABASE=your_database
+        DB_USERNAME=your_username
+        DB_PASSWORD=your_password
+        
+        BROADCAST_CONNECTION=log
+        FILESYSTEM_DISK=local
+        QUEUE_CONNECTION=database
+        
+        CACHE_STORE=database
+        CACHE_PREFIX=
+        
+        SESSION_DRIVER=database
+        SESSION_LIFETIME=120
+        SESSION_ENCRYPT=false
+        SESSION_PATH=/
+        SESSION_DOMAIN=null
+        
+        MAIL_MAILER=log
+        MAIL_HOST=localhost
+        MAIL_PORT=2525
+        MAIL_USERNAME=null
+        MAIL_PASSWORD=null
+        MAIL_ENCRYPTION=null
+        MAIL_FROM_ADDRESS="noreply@imallen.dev"
+        MAIL_FROM_NAME="${APP_NAME}"
+        
+        VITE_APP_NAME="${APP_NAME}"
+        EOF
+        
+        # Crear instrucciones de instalación
+        cat > INSTALL-CPANEL.md << 'EOF'
+        # 🚀 Instalación en cPanel sin NPM
+        
+        ## 📋 Pasos de instalación:
+        
+        1. **📁 Subir archivos:**
+           - Extrae el archivo ZIP en `/public_html/modelo-emm/`
+           
+        2. **⚙️ Configurar .env:**
+           ```bash
+           cp .env.production.example .env
+           php artisan key:generate
+           ```
+           
+        3. **🗄️ Configurar base de datos en .env:**
+           - Actualiza DB_DATABASE, DB_USERNAME, DB_PASSWORD
+           
+        4. **🚀 Ejecutar migraciones:**
+           ```bash
+           php artisan migrate --force
+           ```
+           
+        5. **🔗 Crear storage link:**
+           ```bash
+           php artisan storage:link
+           ```
+           
+        6. **✅ Verificar permisos:**
+           - storage/ (755)
+           - bootstrap/cache/ (755)
+           
+        ## 🌐 Configuración de dominio:
+        - Asegúrate de que imallen.dev apunte a `/public_html/modelo-emm/public/`
+        - O usa el .htaccess multi-dominio en `/public_html/`
+        
+        ## 🎨 Assets:
+        Los archivos CSS/JS ya están compilados en `public/build/`
+        EOF
+        
+        # Crear el archivo ZIP
+        zip -r ../emm-cpanel-ready.zip . -x "*.git*" "*.DS_Store*"
+        
+        echo "📦 Archivo de producción creado: emm-cpanel-ready.zip"
+        
+    - name: 📤 Upload Production Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: emm-cpanel-deployment
+        path: emm-cpanel-ready.zip
+        retention-days: 30
+        
+    - name: ✅ Deployment Summary
+      run: |
+        echo "🎉 ¡Deployment preparado!"
+        echo ""
+        echo "📦 Para instalar en cPanel:"
+        echo "1. Descarga el artifact 'emm-cpanel-deployment'"
+        echo "2. Sube el ZIP a tu servidor cPanel"
+        echo "3. Extrae en /public_html/modelo-emm/"
+        echo "4. Sigue las instrucciones en INSTALL-CPANEL.md"
+        echo ""
+        echo "🔧 No necesitas npm en el servidor - todo está precompilado!"

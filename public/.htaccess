@@ -1,9 +1,28 @@
+# ===========================================
+# HTACCESS PARA MODELO-EMM EN CPANEL MULTI-DOMINIO
+# Optimizado para imallen.dev sin Node.js/npm
+# ===========================================
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # ===========================================
+    # CONFIGURACIÓN MULTI-DOMINIO
+    # Solo procesar si es el dominio imallen.dev
+    # ===========================================
+    
+    # Verificar dominio correcto
+    RewriteCond %{HTTP_HOST} !^(www\.)?imallen\.dev$ [NC]
+    RewriteRule ^(.*)$ - [F,L]
+
+    # Forzar HTTPS para imallen.dev
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP_HOST} ^(www\.)?imallen\.dev$ [NC]
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -12,10 +31,6 @@
     # Handle X-XSRF-Token Header
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
-
-    # Force HTTPS (opcional para cPanel)
-    # RewriteCond %{HTTPS} off
-    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
@@ -26,6 +41,64 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# ===========================================
+# SEGURIDAD Y OPTIMIZACIÓN
+# ===========================================
+
+# Bloquear acceso a archivos sensibles
+<FilesMatch "^(\.env|\.git|composer\.(json|lock)|package\.(json|lock)|artisan)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Cache para assets compilados (build/)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Assets de Vite (con hash)
+    <LocationMatch "^/build/assets/">
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </LocationMatch>
+    
+    # Manifest.json
+    <Files "manifest.json">
+        ExpiresDefault "access plus 1 hour"
+    </Files>
+    
+    # Imágenes
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
+
+# Compresión GZIP
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 # Configuraciones adicionales para cPanel
